@@ -87,6 +87,7 @@ pub fn update_hotbar_ui_system(
         if let Some(stack) = &inventory.slots[i] {
             let item_color = match stack.item {
                 ItemType::Block(bt) => bt.color().to_srgba(),
+                ItemType::Food(_) => Color::srgb(0.8, 0.4, 0.3).to_srgba(),
             };
             *bg = BackgroundColor(Color::srgba(
                 item_color.red * 0.5,

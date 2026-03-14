@@ -1,3 +1,4 @@
+pub mod gadget_hud;
 pub mod hotbar_ui;
 pub mod hud;
 pub mod inventory_screen;
@@ -21,6 +22,7 @@ impl Plugin for UiPlugin {
                 survival_hud::setup_survival_hud,
                 hotbar_ui::setup_hotbar_ui,
                 inventory_screen::setup_inventory_screen,
+                gadget_hud::setup_gadget_hud,
             ))
             .add_systems(Update, (
                 hud::update_debug_text,
@@ -31,6 +33,7 @@ impl Plugin for UiPlugin {
                 inventory_screen::update_inventory_visibility_system,
                 inventory_screen::update_inventory_screen_system,
                 inventory_screen::inventory_click_system,
+                gadget_hud::update_gadget_hud_system,
             ));
     }
 }

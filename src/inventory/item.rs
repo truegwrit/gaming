@@ -3,6 +3,21 @@ use crate::world::voxel::BlockType;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ItemType {
     Block(BlockType),
+    Food(FoodType),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum FoodType {
+    RawPork,
+}
+
+impl FoodType {
+    /// How much hunger this food restores when eaten.
+    pub fn hunger_value(self) -> f32 {
+        match self {
+            FoodType::RawPork => 3.0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

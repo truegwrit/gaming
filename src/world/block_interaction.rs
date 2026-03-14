@@ -165,12 +165,24 @@ pub fn block_break_system(
     mesh_handles: Query<&Mesh3d>,
     mut player_q: Query<&mut crate::inventory::inventory::Inventory, With<Player>>,
     screen_open: Res<crate::ui::inventory_screen::InventoryScreenOpen>,
+    gadget: Res<crate::gadget::gadget::ActiveGadget>,
+    attack_consumed: Res<crate::combat::attack::AttackConsumed>,
 ) {
     if screen_open.0 {
         return;
     }
 
     if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    // Don't break blocks if the attack system consumed this click
+    if attack_consumed.0 {
+        return;
+    }
+
+    // Sword form can't mine blocks
+    if !gadget.form.can_mine() {
         return;
     }
 
@@ -257,6 +269,7 @@ pub fn block_place_system(
 
     let block_type = match stack.item {
         crate::inventory::item::ItemType::Block(bt) => bt,
+        _ => return, // Can't place non-block items
     };
 
     set_block_at(place_pos, block_type, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);

@@ -38,6 +38,9 @@ impl Default for FallTracker {
 pub enum DamageSource {
     Fall,
     Starvation,
+    PlayerAttack,
+    MobMelee,
+    MobProjectile,
 }
 
 #[derive(Message, Clone, Debug)]

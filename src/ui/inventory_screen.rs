@@ -303,6 +303,7 @@ fn update_slot_visual(
     if let Some(stack) = item {
         let c = match stack.item {
             ItemType::Block(bt) => bt.color().to_srgba(),
+            ItemType::Food(_) => Color::srgb(0.8, 0.4, 0.3).to_srgba(),
         };
         *bg = BackgroundColor(Color::srgba(c.red * 0.6, c.green * 0.6, c.blue * 0.6, 0.9));
 
