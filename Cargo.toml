@@ -4,11 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18", features = ["dynamic_linking"] }
+bevy = "0.18"
 noise = "0.9"
 rand = "0.9"
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
+
+[features]
+dev = ["bevy/dynamic_linking"]
 
 [profile.dev]
 opt-level = 1
