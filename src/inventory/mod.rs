@@ -6,6 +6,7 @@ pub mod item;
 use bevy::prelude::*;
 
 use crate::player::controller::Player;
+use crate::states::GameState;
 use crate::world::voxel::BlockType;
 use crafting::RecipeRegistry;
 use hotbar::HotbarSelection;
@@ -22,7 +23,10 @@ impl Plugin for InventoryPlugin {
         app.init_resource::<HotbarSelection>()
             .insert_resource(recipes)
             .add_systems(Startup, attach_inventory.after(crate::player::controller::spawn_player))
-            .add_systems(Update, hotbar::hotbar_selection_system);
+            .add_systems(Update,
+                hotbar::hotbar_selection_system
+                    .run_if(in_state(GameState::InGame))
+            );
     }
 }
 
@@ -30,7 +34,6 @@ impl Plugin for InventoryPlugin {
 fn attach_inventory(mut commands: Commands, player_q: Query<Entity, With<Player>>) {
     if let Ok(entity) = player_q.single() {
         let mut inv = Inventory::default();
-        // Starting items for testing
         inv.slots[0] = Some(ItemStack::block(BlockType::Cobblestone, 64));
         inv.slots[1] = Some(ItemStack::block(BlockType::Dirt, 64));
         inv.slots[2] = Some(ItemStack::block(BlockType::Wood, 32));

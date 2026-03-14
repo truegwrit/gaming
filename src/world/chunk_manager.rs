@@ -74,9 +74,14 @@ pub fn chunk_gen_poll_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut tasks: Query<(Entity, &mut ChunkGenTask)>,
+    mut modified_chunks: ResMut<super::save_load::ModifiedChunks>,
 ) {
     for (entity, mut task) in tasks.iter_mut() {
-        if let Some((coord, chunk_data)) = block_on(future::poll_once(&mut task.0)) {
+        if let Some((coord, mut chunk_data)) = block_on(future::poll_once(&mut task.0)) {
+            // Override with saved modified chunk data if available
+            if let Some(saved) = modified_chunks.0.remove(&coord) {
+                chunk_data = saved;
+            }
             // Remove the task entity
             commands.entity(entity).despawn();
 

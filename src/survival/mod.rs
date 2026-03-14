@@ -5,6 +5,7 @@ pub mod hunger;
 use bevy::prelude::*;
 
 use crate::player::controller::Player;
+use crate::states::GameState;
 use day_night::DayCycle;
 use health::{DamageMessage, FallTracker, Health};
 use hunger::Hunger;
@@ -31,7 +32,7 @@ impl Plugin for SurvivalPlugin {
                     .after(health::fall_damage_system)
                     .after(hunger::starvation_system),
                 health::health_regen_system.after(health::apply_damage_system),
-            ));
+            ).run_if(in_state(GameState::InGame)));
     }
 }
 

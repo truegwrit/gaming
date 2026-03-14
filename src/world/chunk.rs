@@ -41,6 +41,35 @@ impl ChunkData {
             self.blocks[Self::index(x, y, z)] = block;
         }
     }
+
+    /// Get the raw block data as a byte slice (BlockType is repr(u8)).
+    pub fn blocks_as_bytes(&self) -> &[u8] {
+        // SAFETY: BlockType is repr(u8), so transmuting to &[u8] is safe.
+        unsafe {
+            std::slice::from_raw_parts(
+                self.blocks.as_ptr() as *const u8,
+                TOTAL_BLOCKS,
+            )
+        }
+    }
+
+    /// Create ChunkData from raw bytes. Invalid bytes become Air.
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut chunk = Self::new_air();
+        let len = bytes.len().min(TOTAL_BLOCKS);
+        for i in 0..len {
+            // Validate byte is a valid BlockType discriminant (0..=14)
+            if bytes[i] <= 14 {
+                chunk.blocks[i] = unsafe { std::mem::transmute::<u8, BlockType>(bytes[i]) };
+            }
+        }
+        chunk
+    }
+
+    /// Check if this chunk differs from another.
+    pub fn differs_from(&self, other: &ChunkData) -> bool {
+        self.blocks_as_bytes() != other.blocks_as_bytes()
+    }
 }
 
 /// Marker component for chunks that need re-meshing.

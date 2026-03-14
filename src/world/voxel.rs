@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, serde::Serialize, serde::Deserialize)]
 #[repr(u8)]
 pub enum BlockType {
     #[default]

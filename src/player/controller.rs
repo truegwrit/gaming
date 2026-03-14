@@ -261,11 +261,10 @@ fn get_block(
     chunk_data.get(local_x, world_pos.y as usize, local_z)
 }
 
-/// System to grab/release mouse cursor.
+/// System to grab mouse cursor on left click (Escape handled by pause menu).
 pub fn cursor_grab_system(
     mut cursor_q: Query<&mut CursorOptions, With<PrimaryWindow>>,
     mouse: Res<ButtonInput<MouseButton>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     let Ok(mut cursor) = cursor_q.single_mut() else {
         return;
@@ -275,9 +274,39 @@ pub fn cursor_grab_system(
         cursor.grab_mode = CursorGrabMode::Locked;
         cursor.visible = false;
     }
+}
 
-    if keyboard.just_pressed(KeyCode::Escape) {
-        cursor.grab_mode = CursorGrabMode::None;
-        cursor.visible = true;
+/// Update camera position based on CameraMode (first-person vs third-person).
+pub fn update_camera_position(
+    camera_mode: Res<crate::player::character_model::CameraMode>,
+    time: Res<Time>,
+    mut camera_q: Query<&mut Transform, (With<Camera3d>, Without<Player>)>,
+) {
+    let Ok(mut camera_tf) = camera_q.single_mut() else {
+        return;
+    };
+    let dt = time.delta_secs();
+
+    match *camera_mode {
+        crate::player::character_model::CameraMode::FirstPerson => {
+            let target = Vec3::new(0.0, PLAYER_EYE_HEIGHT, 0.0);
+            camera_tf.translation = camera_tf.translation.lerp(target, (dt * 12.0).min(1.0));
+        }
+        crate::player::character_model::CameraMode::ThirdPerson => {
+            // Get current pitch from camera rotation
+            let (_, pitch, _) = camera_tf.rotation.to_euler(EulerRot::YXZ);
+
+            // Calculate orbit position behind and above the player
+            let orbit_offset = Quat::from_rotation_x(pitch) * Vec3::new(0.0, 2.5, -5.0);
+            let target = orbit_offset;
+            camera_tf.translation = camera_tf.translation.lerp(target, (dt * 12.0).min(1.0));
+
+            // Look at the player's head
+            let look_target = Vec3::new(0.0, 1.2, 0.0);
+            let look_dir = (look_target - camera_tf.translation).normalize_or_zero();
+            if look_dir.length_squared() > 0.001 {
+                camera_tf.look_to(look_dir, Vec3::Y);
+            }
+        }
     }
 }

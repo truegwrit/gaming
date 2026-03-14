@@ -7,6 +7,7 @@ mod inventory;
 mod mobs;
 mod physics;
 mod player;
+mod sound;
 mod states;
 mod survival;
 mod ui;
@@ -22,6 +23,7 @@ fn main() {
             }),
             ..default()
         }))
+        .init_state::<states::GameState>()
         // Core game plugins
         .add_plugins((
             world::WorldPlugin,
@@ -29,13 +31,14 @@ fn main() {
             physics::PhysicsPlugin,
             ui::UiPlugin,
         ))
-        // Placeholder plugins (Phase 2+)
+        // Feature plugins
         .add_plugins((
             gadget::GadgetPlugin,
             inventory::InventoryPlugin,
             survival::SurvivalPlugin,
             combat::CombatPlugin,
             mobs::MobPlugin,
+            sound::SoundPlugin,
             debug::DebugPlugin,
         ))
         .run();

@@ -4,6 +4,7 @@ pub mod knockback;
 use bevy::prelude::*;
 
 use crate::player::controller::Player;
+use crate::states::GameState;
 use attack::{AttackConsumed, AttackCooldown};
 
 pub struct CombatPlugin;
@@ -20,7 +21,7 @@ impl Plugin for CombatPlugin {
                     .after(attack::attack_cooldown_tick_system),
                 knockback::apply_knockback_system
                     .after(attack::attack_system),
-            ));
+            ).run_if(in_state(GameState::InGame)));
     }
 }
 
