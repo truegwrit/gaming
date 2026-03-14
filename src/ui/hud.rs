@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 
 use crate::player::controller::Player;
+use crate::survival::day_night::DayCycle;
 use crate::world::block_interaction::TargetedBlock;
 
 #[derive(Component)]
@@ -110,6 +111,7 @@ pub fn update_debug_text(
     diagnostics: Res<DiagnosticsStore>,
     player_q: Query<&Transform, With<Player>>,
     targeted: Res<TargetedBlock>,
+    day_cycle: Res<DayCycle>,
     mut text_q: Query<&mut Text, With<DebugText>>,
     mut highlight_q: Query<&mut Text, (With<BlockHighlightText>, Without<DebugText>)>,
 ) {
@@ -122,8 +124,9 @@ pub fn update_debug_text(
         let pos = player_tf.translation;
         if let Ok(mut text) = text_q.single_mut() {
             *text = Text::new(format!(
-                "RoninCraft v0.1\nFPS: {:.0}\nPos: {:.1}, {:.1}, {:.1}",
-                fps, pos.x, pos.y, pos.z
+                "RoninCraft v0.1\nFPS: {:.0}\nPos: {:.1}, {:.1}, {:.1}\nDay {} - {}",
+                fps, pos.x, pos.y, pos.z,
+                day_cycle.day, day_cycle.time_of_day_name()
             ));
         }
     }

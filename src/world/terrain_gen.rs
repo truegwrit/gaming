@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use noise::{NoiseFn, Perlin};
 
+use super::biome::{BiomeType, biome_params, select_biome};
 use super::chunk::{CHUNK_HEIGHT, CHUNK_SIZE, ChunkData};
 use super::voxel::BlockType;
 
@@ -19,6 +20,12 @@ pub fn generate_chunk(coord: IVec2, seed: u64) -> ChunkData {
     let continentalness = Perlin::new(seed as u32);
     let erosion = Perlin::new(seed as u32 + 1);
     let detail = Perlin::new(seed as u32 + 2);
+    let temperature_noise = Perlin::new(seed as u32 + 10);
+    let humidity_noise = Perlin::new(seed as u32 + 11);
+
+    // Per-column biome data (stored for tree pass)
+    let mut column_biomes = [[BiomeType::Plains; CHUNK_SIZE]; CHUNK_SIZE];
+    let mut column_heights = [[0usize; CHUNK_SIZE]; CHUNK_SIZE];
 
     for local_x in 0..CHUNK_SIZE {
         for local_z in 0..CHUNK_SIZE {
@@ -29,12 +36,23 @@ pub fn generate_chunk(coord: IVec2, seed: u64) -> ChunkData {
             let wz = world_z as f64;
 
             // Multi-octave height sampling
-            let base = continentalness.get([wx * 0.003, wz * 0.003]) * 32.0;
+            let base = continentalness.get([wx * 0.003, wz * 0.003]);
             let mid = erosion.get([wx * 0.01, wz * 0.01]) * 12.0;
             let fine = detail.get([wx * 0.05, wz * 0.05]) * 4.0;
 
-            let height = (64.0 + base + mid + fine).max(1.0) as usize;
+            // Biome selection
+            let temperature = temperature_noise.get([wx * 0.002, wz * 0.002]);
+            let humidity = humidity_noise.get([wx * 0.002, wz * 0.002]);
+            let biome = select_biome(temperature, humidity, base);
+            let params = biome_params(biome);
+
+            column_biomes[local_x][local_z] = biome;
+
+            // Apply biome height modifiers
+            let raw_height = 64.0 + base * 32.0 + mid + fine;
+            let height = (raw_height * params.height_scale + params.height_offset).max(1.0) as usize;
             let height = height.min(CHUNK_HEIGHT - 1);
+            column_heights[local_x][local_z] = height;
 
             // Fill bedrock
             chunk.set(local_x, 0, local_z, BlockType::Bedrock);
@@ -44,14 +62,14 @@ pub fn generate_chunk(coord: IVec2, seed: u64) -> ChunkData {
                 chunk.set(local_x, y, local_z, BlockType::Stone);
             }
 
-            // Fill dirt layers
+            // Fill subsurface layers (biome-specific)
             for y in height.saturating_sub(4)..height {
-                chunk.set(local_x, y, local_z, BlockType::Dirt);
+                chunk.set(local_x, y, local_z, params.subsurface_block);
             }
 
-            // Top layer is grass
+            // Top layer (biome-specific)
             if height > 0 {
-                chunk.set(local_x, height, local_z, BlockType::Grass);
+                chunk.set(local_x, height, local_z, params.surface_block);
             }
 
             // Fill water up to sea level (y=60)
@@ -62,42 +80,57 @@ pub fn generate_chunk(coord: IVec2, seed: u64) -> ChunkData {
                         chunk.set(local_x, y, local_z, BlockType::Water);
                     }
                 }
-                // Sand at the bottom of water
+                // Sand at the bottom of water (regardless of biome)
                 if height > 0 {
                     chunk.set(local_x, height, local_z, BlockType::Sand);
                 }
             }
+
+            // Mountains: snow cap above a certain height
+            if biome == BiomeType::Mountains && height > 85 {
+                chunk.set(local_x, height, local_z, BlockType::Snow);
+            }
         }
     }
 
-    // Generate trees
-    generate_trees(&mut chunk, coord, seed);
+    // Generate trees (biome-aware)
+    generate_trees(&mut chunk, coord, seed, &column_biomes, &column_heights);
 
     chunk
 }
 
-fn generate_trees(chunk: &mut ChunkData, coord: IVec2, seed: u64) {
+fn generate_trees(
+    chunk: &mut ChunkData,
+    coord: IVec2,
+    seed: u64,
+    biomes: &[[BiomeType; CHUNK_SIZE]; CHUNK_SIZE],
+    heights: &[[usize; CHUNK_SIZE]; CHUNK_SIZE],
+) {
     let tree_noise = Perlin::new(seed as u32 + 100);
 
     for local_x in 3..(CHUNK_SIZE - 3) {
         for local_z in 3..(CHUNK_SIZE - 3) {
+            let biome = biomes[local_x][local_z];
+            let params = biome_params(biome);
+
+            if !params.tree_enabled {
+                continue;
+            }
+
             let world_x = coord.x * CHUNK_SIZE as i32 + local_x as i32;
             let world_z = coord.y * CHUNK_SIZE as i32 + local_z as i32;
 
             let val = tree_noise.get([world_x as f64 * 0.5, world_z as f64 * 0.5]);
 
-            if val > 0.75 {
-                // Find ground level
-                let mut ground_y = 0;
-                for y in (0..CHUNK_HEIGHT).rev() {
-                    if chunk.get(local_x, y, local_z) == BlockType::Grass {
-                        ground_y = y;
-                        break;
-                    }
-                }
+            if val > params.tree_density {
+                let ground_y = heights[local_x][local_z];
 
                 if ground_y > 60 && ground_y + 7 < CHUNK_HEIGHT {
-                    place_tree(chunk, local_x, ground_y + 1, local_z);
+                    // Check the surface block is suitable for trees
+                    let surface = chunk.get(local_x, ground_y, local_z);
+                    if surface == BlockType::Grass || surface == BlockType::Snow {
+                        place_tree(chunk, local_x, ground_y + 1, local_z);
+                    }
                 }
             }
         }

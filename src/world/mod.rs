@@ -1,3 +1,4 @@
+pub mod biome;
 pub mod block_interaction;
 pub mod chunk;
 pub mod chunk_manager;

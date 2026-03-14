@@ -58,25 +58,7 @@ pub fn spawn_player(mut commands: Commands) {
         });
 }
 
-/// Setup lighting.
-pub fn setup_lighting(mut commands: Commands) {
-    // Sun
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.8, 0.4, 0.0)),
-    ));
-
-    // Global ambient light
-    commands.insert_resource(GlobalAmbientLight {
-        color: Color::srgb(0.6, 0.7, 1.0),
-        brightness: 500.0,
-        affects_lightmapped_meshes: true,
-    });
-}
+// Note: Lighting setup moved to survival/day_night.rs (setup_sun)
 
 /// System to handle mouse look (camera rotation).
 pub fn mouse_look_system(

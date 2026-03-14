@@ -155,6 +155,7 @@ pub fn update_targeted_block(
 }
 
 /// System to handle block breaking (left click).
+/// Now adds dropped items to the player's inventory.
 pub fn block_break_system(
     mouse: Res<ButtonInput<MouseButton>>,
     targeted: Res<TargetedBlock>,
@@ -162,7 +163,13 @@ pub fn block_break_system(
     mut chunks: Query<(&ChunkCoord, &mut ChunkData)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mesh_handles: Query<&Mesh3d>,
+    mut player_q: Query<&mut crate::inventory::inventory::Inventory, With<Player>>,
+    screen_open: Res<crate::ui::inventory_screen::InventoryScreenOpen>,
 ) {
+    if screen_open.0 {
+        return;
+    }
+
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
@@ -171,10 +178,37 @@ pub fn block_break_system(
         return;
     };
 
+    // Read the block type before destroying it
+    let old_block = {
+        let chunk_coord = IVec2::new(
+            (hit_pos.x as f32 / CHUNK_SIZE as f32).floor() as i32,
+            (hit_pos.z as f32 / CHUNK_SIZE as f32).floor() as i32,
+        );
+        if let Some(&entity) = chunk_map.0.get(&chunk_coord) {
+            if let Ok((_, chunk_data)) = chunks.get(entity) {
+                let lx = ((hit_pos.x % CHUNK_SIZE as i32) + CHUNK_SIZE as i32) as usize % CHUNK_SIZE;
+                let lz = ((hit_pos.z % CHUNK_SIZE as i32) + CHUNK_SIZE as i32) as usize % CHUNK_SIZE;
+                chunk_data.get(lx, hit_pos.y as usize, lz)
+            } else {
+                BlockType::Air
+            }
+        } else {
+            BlockType::Air
+        }
+    };
+
     set_block_at(hit_pos, BlockType::Air, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);
+
+    // Add dropped item to inventory
+    if let Some(drop) = crate::inventory::item::block_drop(old_block) {
+        if let Ok(mut inventory) = player_q.single_mut() {
+            let _ = inventory.try_add(drop);
+        }
+    }
 }
 
 /// System to handle block placing (right click).
+/// Now consumes items from the selected hotbar slot.
 pub fn block_place_system(
     mouse: Res<ButtonInput<MouseButton>>,
     targeted: Res<TargetedBlock>,
@@ -182,8 +216,15 @@ pub fn block_place_system(
     mut chunks: Query<(&ChunkCoord, &mut ChunkData)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mesh_handles: Query<&Mesh3d>,
-    player_q: Query<&Transform, With<Player>>,
+    player_q_transform: Query<&Transform, With<Player>>,
+    mut player_q_inv: Query<&mut crate::inventory::inventory::Inventory, With<Player>>,
+    hotbar: Res<crate::inventory::hotbar::HotbarSelection>,
+    screen_open: Res<crate::ui::inventory_screen::InventoryScreenOpen>,
 ) {
+    if screen_open.0 {
+        return;
+    }
+
     if !mouse.just_pressed(MouseButton::Right) {
         return;
     }
@@ -193,19 +234,35 @@ pub fn block_place_system(
     };
 
     // Don't place block where the player is standing
-    if let Ok(player_tf) = player_q.single() {
+    if let Ok(player_tf) = player_q_transform.single() {
         let player_block = IVec3::new(
             player_tf.translation.x.floor() as i32,
             player_tf.translation.y.floor() as i32,
             player_tf.translation.z.floor() as i32,
         );
-        // Check both feet and head level
         if place_pos == player_block || place_pos == player_block + IVec3::Y {
             return;
         }
     }
 
-    set_block_at(place_pos, BlockType::Cobblestone, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);
+    // Get block type from selected hotbar slot
+    let Ok(mut inventory) = player_q_inv.single_mut() else {
+        return;
+    };
+
+    let slot = hotbar.selected;
+    let Some(stack) = &inventory.slots[slot] else {
+        return; // Empty slot, nothing to place
+    };
+
+    let block_type = match stack.item {
+        crate::inventory::item::ItemType::Block(bt) => bt,
+    };
+
+    set_block_at(place_pos, block_type, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);
+
+    // Consume one item from the slot
+    inventory.remove_from_slot(slot, 1);
 }
 
 fn set_block_at(
