@@ -14,6 +14,7 @@ pub fn gadget_switch_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut sound_writer: MessageWriter<crate::sound::SoundEvent>,
 ) {
     if screen_open.0 {
         return;
@@ -31,6 +32,7 @@ pub fn gadget_switch_system(
     }
 
     if switched {
+        sound_writer.write(crate::sound::SoundEvent::GadgetSwitch);
         // Spawn particle burst at player position
         if let Ok(player_tf) = player_q.single() {
             let origin = player_tf.translation + Vec3::new(0.3, 1.2, 0.3);

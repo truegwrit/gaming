@@ -167,6 +167,7 @@ pub fn block_break_system(
     screen_open: Res<crate::ui::inventory_screen::InventoryScreenOpen>,
     gadget: Res<crate::gadget::gadget::ActiveGadget>,
     attack_consumed: Res<crate::combat::attack::AttackConsumed>,
+    mut sound_writer: MessageWriter<crate::sound::SoundEvent>,
 ) {
     if screen_open.0 {
         return;
@@ -210,6 +211,7 @@ pub fn block_break_system(
     };
 
     set_block_at(hit_pos, BlockType::Air, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);
+    sound_writer.write(crate::sound::SoundEvent::BlockBreak);
 
     // Add dropped item to inventory
     if let Some(drop) = crate::inventory::item::block_drop(old_block) {
@@ -232,6 +234,7 @@ pub fn block_place_system(
     mut player_q_inv: Query<&mut crate::inventory::inventory::Inventory, With<Player>>,
     hotbar: Res<crate::inventory::hotbar::HotbarSelection>,
     screen_open: Res<crate::ui::inventory_screen::InventoryScreenOpen>,
+    mut sound_writer: MessageWriter<crate::sound::SoundEvent>,
 ) {
     if screen_open.0 {
         return;
@@ -273,6 +276,7 @@ pub fn block_place_system(
     };
 
     set_block_at(place_pos, block_type, &chunk_map, &mut chunks, &mut meshes, &mesh_handles);
+    sound_writer.write(crate::sound::SoundEvent::BlockPlace);
 
     // Consume one item from the slot
     inventory.remove_from_slot(slot, 1);

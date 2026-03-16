@@ -29,11 +29,20 @@ impl Default for PlayerController {
     }
 }
 
+/// Timer for throttling footstep sounds.
+#[derive(Resource)]
+pub struct FootstepTimer(pub f32);
+
+impl Default for FootstepTimer {
+    fn default() -> Self {
+        Self(0.0)
+    }
+}
+
 const GRAVITY: f32 = -20.0;
 const JUMP_VELOCITY: f32 = 7.5;
 const WALK_SPEED: f32 = 5.0;
 const SPRINT_SPEED: f32 = 8.0;
-const MOUSE_SENSITIVITY: f32 = 0.003;
 const PLAYER_HEIGHT: f32 = 1.8;
 const PLAYER_WIDTH: f32 = 0.6;
 const PLAYER_EYE_HEIGHT: f32 = 1.6;
@@ -63,6 +72,7 @@ pub fn spawn_player(mut commands: Commands) {
 /// System to handle mouse look (camera rotation).
 pub fn mouse_look_system(
     mouse_motion: Res<AccumulatedMouseMotion>,
+    settings: Res<crate::settings::GameSettings>,
     mut player_q: Query<&mut Transform, With<Player>>,
     mut camera_q: Query<&mut Transform, (With<Camera3d>, Without<Player>)>,
 ) {
@@ -72,14 +82,16 @@ pub fn mouse_look_system(
         return;
     }
 
+    let sensitivity = settings.mouse_sensitivity;
+
     // Yaw on the player (rotate around Y)
     if let Ok(mut player_tf) = player_q.single_mut() {
-        player_tf.rotate_y(-delta.x * MOUSE_SENSITIVITY);
+        player_tf.rotate_y(-delta.x * sensitivity);
     }
 
     // Pitch on the camera (rotate around local X)
     if let Ok(mut camera_tf) = camera_q.single_mut() {
-        let pitch = (-delta.y * MOUSE_SENSITIVITY).clamp(-0.05, 0.05);
+        let pitch = -delta.y * sensitivity;
         camera_tf.rotate_local_x(pitch);
 
         // Clamp pitch to prevent flipping
@@ -261,6 +273,16 @@ fn get_block(
     chunk_data.get(local_x, world_pos.y as usize, local_z)
 }
 
+/// Auto-grab cursor when entering InGame state.
+pub fn grab_cursor_on_enter(
+    mut cursor_q: Query<&mut CursorOptions, With<PrimaryWindow>>,
+) {
+    if let Ok(mut cursor) = cursor_q.single_mut() {
+        cursor.grab_mode = CursorGrabMode::Confined;
+        cursor.visible = false;
+    }
+}
+
 /// System to grab mouse cursor on left click (Escape handled by pause menu).
 pub fn cursor_grab_system(
     mut cursor_q: Query<&mut CursorOptions, With<PrimaryWindow>>,
@@ -271,8 +293,33 @@ pub fn cursor_grab_system(
     };
 
     if mouse.just_pressed(MouseButton::Left) {
-        cursor.grab_mode = CursorGrabMode::Locked;
+        cursor.grab_mode = CursorGrabMode::Confined;
         cursor.visible = false;
+    }
+}
+
+/// Emit footstep sounds while the player is moving on ground.
+pub fn footstep_sound_system(
+    time: Res<Time>,
+    mut timer: ResMut<FootstepTimer>,
+    player_q: Query<&PlayerController, With<Player>>,
+    mut sound_writer: MessageWriter<crate::sound::SoundEvent>,
+) {
+    let Ok(controller) = player_q.single() else { return };
+
+    let horizontal_speed = Vec3::new(controller.velocity.x, 0.0, controller.velocity.z).length();
+    let is_moving = horizontal_speed > 0.5 && controller.on_ground;
+
+    if !is_moving {
+        timer.0 = 0.0;
+        return;
+    }
+
+    timer.0 -= time.delta_secs();
+    if timer.0 <= 0.0 {
+        let interval = if controller.is_sprinting { 0.3 } else { 0.4 };
+        timer.0 = interval;
+        sound_writer.write(crate::sound::SoundEvent::FootstepDirt);
     }
 }
 

@@ -51,6 +51,7 @@ pub fn attack_system(
     mob_q: Query<(Entity, &Transform, &AabbCollider), With<Mob>>,
     mut damage_writer: MessageWriter<DamageMessage>,
     mut commands: Commands,
+    mut sound_writer: MessageWriter<crate::sound::SoundEvent>,
 ) {
     if screen_open.0 {
         return;
@@ -75,6 +76,8 @@ pub fn attack_system(
     let origin = cam_tf.translation();
     let direction = cam_tf.forward().as_vec3();
     let reach = gadget.form.attack_reach();
+
+    sound_writer.write(crate::sound::SoundEvent::AttackSwing);
 
     // Entity raycast against all mobs
     if let Some((hit_entity, hit_point)) = entity_raycast(origin, direction, reach, &mob_q) {

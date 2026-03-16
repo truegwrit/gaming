@@ -5,6 +5,8 @@ pub mod inventory;
 pub mod mobs;
 pub mod physics;
 pub mod player;
+pub mod settings;
+pub mod sound;
 pub mod states;
 pub mod survival;
 pub mod ui;

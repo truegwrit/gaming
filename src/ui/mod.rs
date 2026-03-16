@@ -1,8 +1,10 @@
 pub mod gadget_hud;
 pub mod hotbar_ui;
 pub mod hud;
+pub mod instructions_menu;
 pub mod inventory_screen;
 pub mod main_menu;
+pub mod options_menu;
 pub mod pause_menu;
 pub mod survival_hud;
 
@@ -20,6 +22,7 @@ impl Plugin for UiPlugin {
             .init_resource::<InventoryScreenOpen>()
             .init_resource::<CursorStack>()
             .init_resource::<CraftingGrid>()
+            .init_resource::<options_menu::OptionsFromState>()
             .add_systems(Startup, (
                 hud::setup_hud,
                 survival_hud::setup_survival_hud,
@@ -28,6 +31,8 @@ impl Plugin for UiPlugin {
                 gadget_hud::setup_gadget_hud,
                 main_menu::setup_main_menu,
                 pause_menu::setup_pause_menu,
+                instructions_menu::setup_instructions_menu,
+                options_menu::setup_options_menu,
             ))
             // Gameplay HUD systems (only when InGame)
             .add_systems(Update, (
@@ -50,6 +55,14 @@ impl Plugin for UiPlugin {
                 pause_menu::toggle_pause_system,
                 pause_menu::update_pause_menu_visibility,
                 pause_menu::pause_button_system,
+            ))
+            .add_systems(Update, (
+                instructions_menu::update_instructions_visibility,
+                instructions_menu::instructions_button_system,
+            ))
+            .add_systems(Update, (
+                options_menu::update_options_visibility,
+                options_menu::options_button_system,
             ));
     }
 }

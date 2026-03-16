@@ -16,6 +16,9 @@ pub struct SaveWorldButton;
 #[derive(Component)]
 pub struct QuitToMenuButton;
 
+#[derive(Component)]
+pub struct PauseOptionsButton;
+
 pub fn setup_pause_menu(mut commands: Commands) {
     commands
         .spawn((
@@ -49,6 +52,7 @@ pub fn setup_pause_menu(mut commands: Commands) {
             });
 
             spawn_pause_button(parent, "Resume", ResumeButton);
+            spawn_pause_button(parent, "Options", PauseOptionsButton);
             spawn_pause_button(parent, "Save World", SaveWorldButton);
             spawn_pause_button(parent, "Quit to Menu", QuitToMenuButton);
         });
@@ -102,7 +106,7 @@ pub fn toggle_pause_system(
         GameState::Paused => {
             next_state.set(GameState::InGame);
             if let Ok(mut cursor) = cursor_q.single_mut() {
-                cursor.grab_mode = CursorGrabMode::Locked;
+                cursor.grab_mode = CursorGrabMode::Confined;
                 cursor.visible = false;
             }
         }
@@ -126,10 +130,12 @@ pub fn pause_button_system(
     state: Res<State<GameState>>,
     mut next_state: ResMut<NextState<GameState>>,
     resume_q: Query<&Interaction, (Changed<Interaction>, With<ResumeButton>)>,
+    options_q: Query<&Interaction, (Changed<Interaction>, With<PauseOptionsButton>)>,
     save_q: Query<&Interaction, (Changed<Interaction>, With<SaveWorldButton>)>,
     quit_q: Query<&Interaction, (Changed<Interaction>, With<QuitToMenuButton>)>,
     mut cursor_q: Query<&mut CursorOptions, With<PrimaryWindow>>,
     mut save_writer: MessageWriter<crate::world::save_load::SaveWorldRequest>,
+    mut options_from: ResMut<crate::ui::options_menu::OptionsFromState>,
 ) {
     if *state.get() != GameState::Paused {
         return;
@@ -139,9 +145,16 @@ pub fn pause_button_system(
         if *interaction == Interaction::Pressed {
             next_state.set(GameState::InGame);
             if let Ok(mut cursor) = cursor_q.single_mut() {
-                cursor.grab_mode = CursorGrabMode::Locked;
+                cursor.grab_mode = CursorGrabMode::Confined;
                 cursor.visible = false;
             }
+        }
+    }
+
+    for interaction in options_q.iter() {
+        if *interaction == Interaction::Pressed {
+            options_from.0 = GameState::Paused;
+            next_state.set(GameState::Options);
         }
     }
 

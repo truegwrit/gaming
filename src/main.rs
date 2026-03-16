@@ -7,6 +7,7 @@ mod inventory;
 mod mobs;
 mod physics;
 mod player;
+mod settings;
 mod sound;
 mod states;
 mod survival;
@@ -24,6 +25,7 @@ fn main() {
             ..default()
         }))
         .init_state::<states::GameState>()
+        .init_resource::<settings::GameSettings>()
         // Core game plugins
         .add_plugins((
             world::WorldPlugin,
