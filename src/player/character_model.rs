@@ -5,8 +5,8 @@ use super::controller::Player;
 /// Camera mode: first-person or third-person.
 #[derive(Resource, Default, Clone, Copy, PartialEq, Eq)]
 pub enum CameraMode {
-    #[default]
     FirstPerson,
+    #[default]
     ThirdPerson,
 }
 
@@ -56,7 +56,7 @@ pub fn spawn_character_model(
     let model_root = commands.spawn((
         CharacterModelRoot,
         Transform::from_xyz(0.0, 0.0, 0.0),
-        Visibility::Hidden,
+        Visibility::Inherited,
     )).id();
 
     commands.entity(player_entity).add_child(model_root);

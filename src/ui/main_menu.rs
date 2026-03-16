@@ -13,6 +13,12 @@ pub struct NewWorldButton;
 #[derive(Component)]
 pub struct LoadWorldButton;
 
+#[derive(Component)]
+pub struct InstructionsButton;
+
+#[derive(Component)]
+pub struct OptionsButton;
+
 pub fn setup_main_menu(mut commands: Commands) {
     commands
         .spawn((
@@ -61,6 +67,12 @@ pub fn setup_main_menu(mut commands: Commands) {
 
             // Load World button
             spawn_menu_button(parent, "Load World", LoadWorldButton);
+
+            // Instructions button
+            spawn_menu_button(parent, "Instructions", InstructionsButton);
+
+            // Options button
+            spawn_menu_button(parent, "Options", OptionsButton);
         });
 }
 
@@ -107,7 +119,10 @@ pub fn main_menu_button_system(
     mut next_state: ResMut<NextState<GameState>>,
     new_world_q: Query<&Interaction, (Changed<Interaction>, With<NewWorldButton>)>,
     load_world_q: Query<&Interaction, (Changed<Interaction>, With<LoadWorldButton>)>,
+    instructions_q: Query<&Interaction, (Changed<Interaction>, With<InstructionsButton>)>,
+    options_q: Query<&Interaction, (Changed<Interaction>, With<OptionsButton>)>,
     mut cursor_q: Query<&mut CursorOptions, With<PrimaryWindow>>,
+    mut options_from: ResMut<crate::ui::options_menu::OptionsFromState>,
 ) {
     if *state.get() != GameState::MainMenu {
         return;
@@ -118,7 +133,7 @@ pub fn main_menu_button_system(
             next_state.set(GameState::InGame);
             // Grab cursor for gameplay
             if let Ok(mut cursor) = cursor_q.single_mut() {
-                cursor.grab_mode = CursorGrabMode::Locked;
+                cursor.grab_mode = CursorGrabMode::Confined;
                 cursor.visible = false;
             }
         }
@@ -130,11 +145,24 @@ pub fn main_menu_button_system(
                 // The load system will handle restoring state
                 next_state.set(GameState::InGame);
                 if let Ok(mut cursor) = cursor_q.single_mut() {
-                    cursor.grab_mode = CursorGrabMode::Locked;
+                    cursor.grab_mode = CursorGrabMode::Confined;
                     cursor.visible = false;
                 }
                 // TODO: trigger LoadWorldRequest after entering InGame
             }
+        }
+    }
+
+    for interaction in instructions_q.iter() {
+        if *interaction == Interaction::Pressed {
+            next_state.set(GameState::Instructions);
+        }
+    }
+
+    for interaction in options_q.iter() {
+        if *interaction == Interaction::Pressed {
+            options_from.0 = GameState::MainMenu;
+            next_state.set(GameState::Options);
         }
     }
 }
